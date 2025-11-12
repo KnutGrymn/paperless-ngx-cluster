@@ -1,27 +1,16 @@
 # Paperless-ngx Multi-Node Cluster Documentation
 
-## MIT License
-Copyright (c) 2024
+[![GitHub](https://img.shields.io/badge/github-KnutGrymn%2Fpaperless--ngx--cluster-blue)](https://github.com/KnutGrymn/paperless-ngx-cluster)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Paperless-ngx](https://img.shields.io/badge/paperless--ngx-compatible-brightgreen)](https://github.com/paperless-ngx/paperless-ngx)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+![Shell Check](https://github.com/KnutGrymn/paperless-ngx-cluster/workflows/Shell%20Script%20Tests/badge.svg)
+![Markdown Lint](https://github.com/KnutGrymn/paperless-ngx-cluster/workflows/Markdown%20Lint/badge.svg)
+![Integration Tests](https://github.com/KnutGrymn/paperless-ngx-cluster/workflows/Integration%20Tests/badge.svg)
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+A comprehensive solution for deploying Paperless-ngx in a high-availability multi-node cluster configuration with load balancing and data replication.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-## Table of Contents
+## 📦 Table of Contents
 
 1. [Overview](#overview)
 2. [Architecture](#architecture)
@@ -36,7 +25,7 @@ SOFTWARE.
 11. [Performance Tuning](#performance-tuning)
 12. [Disaster Recovery](#disaster-recovery)
 
-## Overview
+## 🎯 Overview
 
 This documentation describes a highly available, multi-node Paperless-ngx cluster implementation using:
 
@@ -56,7 +45,7 @@ This documentation describes a highly available, multi-node Paperless-ngx cluste
 - **Comprehensive Monitoring**: Real-time health checks and alerts
 - **Automated Backups**: Scheduled backups with retention policies
 
-## Architecture
+## 📋 Architecture
 
 ### System Components
 
@@ -122,7 +111,7 @@ This documentation describes a highly available, multi-node Paperless-ngx cluste
   - 8000: Paperless-ngx web interface
   - 6379: Redis (internal)
 
-## Installation
+## 🚀 Installation
 
 ### Step 1: Prepare All Nodes
 
@@ -152,7 +141,7 @@ On the first node:
 
 ```bash
 # Download the installation script
-wget https://raw.githubusercontent.com/your-repo/paperless-cluster/main/install-cluster.sh
+wget https://raw.githubusercontent.com/KnutGrymn/paperless-cluster/main/install-cluster.sh
 chmod +x install-cluster.sh
 
 # Run installation
@@ -176,7 +165,7 @@ On each additional node:
 
 ```bash
 # Download and run installation
-wget https://raw.githubusercontent.com/your-repo/paperless-cluster/main/install-cluster.sh
+wget https://raw.githubusercontent.com/KnutGrymn/paperless-cluster/main/install-cluster.sh
 chmod +x install-cluster.sh
 sudo ./install-cluster.sh
 ```
@@ -214,7 +203,7 @@ sudo gluster volume status
 cd /opt/paperless-ngx && docker compose ps
 ```
 
-## Configuration
+## 🔧 Configuration
 
 ### Main Configuration File
 
@@ -438,7 +427,7 @@ Each backup includes:
 - Paperless-ngx data and media files
 - System configuration
 
-## Maintenance
+## 🛡️ Maintenance
 
 ### Updating Paperless-ngx
 
@@ -538,7 +527,7 @@ docker builder prune -f
 docker system df
 ```
 
-## Troubleshooting
+## 🆘 Troubleshooting
 
 ### Common Issues and Solutions
 
@@ -647,7 +636,7 @@ docker compose restart webserver
 - **Cluster Monitor:** `/var/log/paperless-cluster-monitor.log`
 - **System:** `journalctl -u <service-name>`
 
-## Security Considerations
+## 🛡️ Security Considerations
 
 ### Network Security
 
