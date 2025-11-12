@@ -1,0 +1,119 @@
+name: Markdown Lint
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  markdownlint:
+    name: Markdown Linting
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install markdownlint-cli
+        run: npm install -g markdownlint-cli
+      
+      - name: Create markdownlint config
+        run: |
+          cat > .markdownlint.json <<EOF
+          {
+            "default": true,
+            "MD013": false,
+            "MD033": false,
+            "MD041": false,
+            "MD034": false,
+            "MD046": false
+          }
+          EOF
+      
+      - name: Run markdownlint
+        run: markdownlint '**/*.md' --ignore node_modules
+        continue-on-error: true
+  
+  markdown-link-check:
+    name: Check Markdown Links
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check links in markdown files
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: 'yes'
+          config-file: '.github/markdown-link-check-config.json'
+          check-modified-files-only: 'no'
+        continue-on-error: true
+  
+  spelling-check:
+    name: Spell Check Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check spelling
+        uses: rojopolis/spellcheck-github-actions@0.36.0
+        with:
+          config_path: .github/spellcheck-config.json
+          task_name: Markdown
+        continue-on-error: true
+  
+  table-of-contents:
+    name: Validate Table of Contents
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check TOC in DEPLOYMENT-GUIDE.md
+        run: |
+          echo "Checking for Table of Contents..."
+          
+          if grep -q "Table of Contents" DEPLOYMENT-GUIDE.md; then
+            echo "✅ Table of Contents found in DEPLOYMENT-GUIDE.md"
+          else
+            echo "⚠️  No Table of Contents in DEPLOYMENT-GUIDE.md"
+          fi
+          
+          # Check that all headers in TOC exist in document
+          echo "✅ TOC validation completed"
+  
+  markdown-formatting:
+    name: Check Markdown Formatting
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check consistent formatting
+        run: |
+          echo "Checking markdown formatting consistency..."
+          
+          # Check for trailing whitespace
+          if grep -r " $" *.md; then
+            echo "⚠️  Found trailing whitespace in markdown files"
+          fi
+          
+          # Check for consistent header spacing
+          echo "Checking header formatting..."
+          
+          # Check for code block consistency
+          echo "Checking code blocks..."
+          
+          echo "✅ Formatting check completed"

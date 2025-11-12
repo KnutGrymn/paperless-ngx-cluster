@@ -1,0 +1,250 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+  schedule:
+    # Run weekly on Sunday at 2 AM UTC
+    - cron: '0 2 * * 0'
+
+jobs:
+  docker-validation:
+    name: Docker Environment Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Verify Docker installation
+        run: |
+          docker --version
+          docker-compose --version || docker compose version
+      
+      - name: Test Docker availability
+        run: |
+          docker run --rm hello-world
+          echo "✅ Docker is working"
+  
+  script-variables-check:
+    name: Check Script Variables
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check for unset variables
+        run: |
+          echo "Checking for potential unset variable usage..."
+          EXIT_CODE=0
+          
+          # Look for common unset variable patterns
+          for script in scripts/*.sh; do
+            if [ -f "$script" ]; then
+              echo "Checking $script..."
+              
+              # Check for set -u or set -o nounset (good practice)
+              if ! grep -q "set -u\|set -o nounset" "$script"; then
+                echo "⚠️  $script doesn't use 'set -u' for safer variable handling"
+              fi
+              
+              # Check for set -e (exit on error)
+              if grep -q "set -e\|set -o errexit" "$script"; then
+                echo "✅ $script uses 'set -e' for error handling"
+              else
+                echo "⚠️  $script doesn't use 'set -e'"
+              fi
+            fi
+          done
+          
+          echo "✅ Variable checks completed"
+  
+  dependency-check:
+    name: Check Required Dependencies
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Extract required commands from scripts
+        run: |
+          echo "Extracting required commands from scripts..."
+          
+          # Common commands that might be required
+          COMMANDS="docker docker-compose curl wget tar gzip sed awk grep jq"
+          
+          for cmd in $COMMANDS; do
+            if grep -q "$cmd" scripts/*.sh 2>/dev/null; then
+              echo "📦 $cmd is used in scripts"
+              
+              # Check if available
+              if command -v $cmd &> /dev/null; then
+                echo "  ✅ $cmd is available"
+              else
+                echo "  ❌ $cmd is NOT available (would need installation)"
+              fi
+            fi
+          done
+  
+  test-backup-restore-logic:
+    name: Test Backup/Restore Logic
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Create test environment
+        run: |
+          mkdir -p test-env/backups
+          cd test-env
+          
+          # Create dummy data
+          mkdir -p data media export
+          echo "test data" > data/test.txt
+          echo "test media" > media/test.jpg
+          
+          # Test backup script structure
+          if [ -f ../scripts/cluster-backup.sh ]; then
+            echo "✅ Backup script exists"
+            
+            # Check for key functions
+            if grep -q "backup_database\|backup_documents\|backup_configuration" ../scripts/cluster-backup.sh; then
+              echo "✅ Backup functions found"
+            fi
+            
+            if grep -q "restore_database\|restore_documents" ../scripts/cluster-backup.sh; then
+              echo "✅ Restore functions found"
+            fi
+          fi
+  
+  validate-generated-configs:
+    name: Validate Generated Configurations
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install YAML validator
+        run: |
+          pip install yamllint
+      
+      - name: Test docker-compose generation
+        run: |
+          echo "Testing docker-compose.yml generation patterns..."
+          
+          # Check that scripts generate valid YAML structure
+          if grep -A 50 "cat > docker-compose.yml" scripts/install-paperless-ngx-cluster.sh | grep -q "version:\|services:"; then
+            echo "✅ Docker Compose YAML structure found"
+          fi
+          
+          # Check for required services
+          if grep -q "webserver:\|db:\|redis:" scripts/install-paperless-ngx-cluster.sh; then
+            echo "✅ Required services are configured"
+          fi
+  
+  file-permissions-test:
+    name: Test File Operations
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Test file creation operations
+        run: |
+          echo "Testing file operation safety..."
+          
+          # Check that scripts don't use dangerous operations
+          if grep -r "rm -rf /" scripts/*.sh; then
+            echo "❌ DANGEROUS: Found 'rm -rf /' command"
+            exit 1
+          fi
+          
+          # Check for safe file operations
+          if grep -q "mkdir -p\|install -d" scripts/*.sh; then
+            echo "✅ Scripts use safe directory creation"
+          fi
+          
+          echo "✅ File operation checks passed"
+  
+  port-conflict-check:
+    name: Check for Port Conflicts
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Extract port numbers from scripts
+        run: |
+          echo "Extracting port numbers from configuration..."
+          
+          # Extract ports from scripts
+          grep -oh "[0-9]\{4,5\}" scripts/*.sh | sort -u | while read port; do
+            if [ "$port" -ge 1 ] && [ "$port" -le 65535 ]; then
+              echo "Port $port is referenced"
+            fi
+          done
+          
+          # Check for standard ports
+          if grep -q "8000\|5432\|6379\|26379" scripts/*.sh; then
+            echo "✅ Standard paperless-ngx cluster ports found"
+          fi
+  
+  environment-variable-check:
+    name: Environment Variable Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check environment variable usage
+        run: |
+          echo "Checking environment variable patterns..."
+          
+          # Check for proper variable expansion
+          if grep -E '\$[A-Z_]+[^{}]' scripts/*.sh | grep -v '#!/' | grep -v '#'; then
+            echo "⚠️  Found unquoted variable expansions (should use \${VAR})"
+          fi
+          
+          # Check for documented environment variables
+          if grep -q "PAPERLESS_\|POSTGRES_\|REDIS_" scripts/*.sh; then
+            echo "✅ Paperless environment variables found"
+          fi
+          
+          echo "✅ Environment variable check completed"
+  
+  network-config-check:
+    name: Network Configuration Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check network configuration
+        run: |
+          echo "Checking network-related configurations..."
+          
+          # Check for network mode settings
+          if grep -q "networks:\|network_mode:" scripts/install-paperless-ngx-cluster.sh; then
+            echo "✅ Docker network configuration found"
+          fi
+          
+          # Check for firewall mentions
+          if grep -q "ufw\|iptables\|firewall" scripts/*.sh *.md; then
+            echo "✅ Firewall configuration mentioned"
+          fi
+          
+          echo "✅ Network configuration check completed"

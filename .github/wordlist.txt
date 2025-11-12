@@ -1,0 +1,124 @@
+# Custom wordlist for paperless-ngx cluster documentation
+# Technical terms, product names, and project-specific vocabulary
+
+# Product names
+Paperless
+paperless
+ngx
+PostgreSQL
+Redis
+Sentinel
+Docker
+Nginx
+HAProxy
+Traefik
+GlusterFS
+Grafana
+Prometheus
+Celery
+Gotenberg
+Tika
+
+# Technical terms
+webserver
+frontend
+backend
+failover
+replication
+loadbalancer
+filesystem
+hostname
+IP
+IPs
+CLI
+API
+APIs
+SSL
+TLS
+HTTPS
+UUID
+JSON
+YAML
+Dockerfile
+kubectl
+systemd
+cron
+sudo
+
+# Docker related
+docker-compose
+dockerized
+
+# Database terms
+PostgreSQL
+postgres
+PostgreSQL's
+pg
+psql
+pgdata
+repmgr
+Patroni
+
+# File formats
+pdf
+PDFs
+xlsx
+docx
+pptx
+
+# Commands and tools
+curl
+wget
+tar
+gzip
+ssh
+rsync
+lsyncd
+gluster
+exportfs
+mountpoint
+iptables
+ufw
+
+# Configuration
+config
+configs
+conf
+
+# Network
+VPN
+DNS
+firewall
+NFS
+
+# Code/scripting
+bash
+shebang
+env
+
+# Project specific
+KnutGrymn
+OCR
+CSRF
+
+# Common tech abbreviations
+VM
+LB
+HA
+RTO
+RPO
+PITR
+HSTS
+EOF
+GB
+MB
+KB
+
+# Misc
+runbook
+subdirectories
+metadata
+timestamp
+username
+Changelog
+changelog

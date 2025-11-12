@@ -1,0 +1,208 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Invalid version format: $VERSION"
+            echo "Expected format: v1.0.0"
+            exit 1
+          fi
+          echo "✅ Version format is valid: $VERSION"
+      
+      - name: Create release archive
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ARCHIVE_NAME="paperless-ngx-cluster-${VERSION}.tar.gz"
+          
+          # Create archive excluding .git and .github
+          tar -czf "$ARCHIVE_NAME" \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='*.tar.gz' \
+            .
+          
+          echo "✅ Created archive: $ARCHIVE_NAME"
+          ls -lh "$ARCHIVE_NAME"
+          echo "archive_name=$ARCHIVE_NAME" >> $GITHUB_ENV
+      
+      - name: Generate checksums
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ARCHIVE_NAME="paperless-ngx-cluster-${VERSION}.tar.gz"
+          
+          # Generate SHA256 checksum
+          sha256sum "$ARCHIVE_NAME" > "${ARCHIVE_NAME}.sha256"
+          
+          # Generate MD5 checksum
+          md5sum "$ARCHIVE_NAME" > "${ARCHIVE_NAME}.md5"
+          
+          echo "✅ Generated checksums"
+          cat "${ARCHIVE_NAME}.sha256"
+          cat "${ARCHIVE_NAME}.md5"
+      
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          cat > release-notes.md <<EOF
+          # Paperless-ngx 2-Node Cluster ${VERSION}
+          
+          ## 📦 Installation
+          
+          ### Option 1: Clone Repository (Recommended)
+          \`\`\`bash
+          git clone https://github.com/KnutGrymn/paperless-ngx-cluster.git
+          cd paperless-ngx-cluster
+          chmod +x scripts/*.sh
+          \`\`\`
+          
+          ### Option 2: Download Release Archive
+          \`\`\`bash
+          wget https://github.com/KnutGrymn/paperless-ngx-cluster/releases/download/${VERSION}/paperless-ngx-cluster-${VERSION}.tar.gz
+          tar -xzf paperless-ngx-cluster-${VERSION}.tar.gz
+          cd paperless-ngx-cluster-${VERSION}
+          chmod +x scripts/*.sh
+          \`\`\`
+          
+          ### Option 3: Download Individual Scripts
+          \`\`\`bash
+          curl -L -o install-paperless-ngx-cluster.sh \\
+            https://raw.githubusercontent.com/KnutGrymn/paperless-ngx-cluster/main/scripts/install-paperless-ngx-cluster.sh
+          chmod +x install-paperless-ngx-cluster.sh
+          \`\`\`
+          
+          ## 🚀 Quick Start
+          
+          1. **On Node 1 (Primary):**
+             \`\`\`bash
+             ./install-paperless-ngx-cluster.sh
+             \`\`\`
+          
+          2. **On Node 2 (Secondary):**
+             \`\`\`bash
+             ./install-paperless-ngx-cluster.sh
+             # Use the same credentials as Node 1!
+             \`\`\`
+          
+          3. **Set up Load Balancer:**
+             \`\`\`bash
+             ./generate-lb-config.sh
+             \`\`\`
+          
+          ## 📋 What's Included
+          
+          - \`install-paperless-ngx-cluster.sh\` - Main installation script for both nodes
+          - \`cluster-health-check.sh\` - Comprehensive health monitoring
+          - \`cluster-backup.sh\` - Automated backup and restore
+          - \`generate-lb-config.sh\` - Load balancer configuration generator
+          - \`README.md\` - Quick start guide and overview
+          - \`DEPLOYMENT-GUIDE.md\` - Complete deployment documentation
+          - \`QUICK-REFERENCE.md\` - Essential commands cheat sheet
+          - \`INSTALLATION-CHECKLIST.md\` - Step-by-step installation checklist
+          
+          ## 🔒 Checksums
+          
+          **SHA256:**
+          \`\`\`
+          $(cat paperless-ngx-cluster-${VERSION}.tar.gz.sha256)
+          \`\`\`
+          
+          **MD5:**
+          \`\`\`
+          $(cat paperless-ngx-cluster-${VERSION}.tar.gz.md5)
+          \`\`\`
+          
+          ## ✨ Features
+          
+          - ✅ High Availability with active-active configuration
+          - ✅ PostgreSQL primary-replica replication
+          - ✅ Redis Sentinel for cache failover
+          - ✅ Support for NFS, GlusterFS, or local storage
+          - ✅ Load balancer configs for Nginx, HAProxy, Traefik
+          - ✅ Automated backup and restore
+          - ✅ Comprehensive health monitoring
+          - ✅ Production-ready with SSL/TLS support
+          
+          ## 📚 Documentation
+          
+          - [README](https://github.com/KnutGrymn/paperless-ngx-cluster/blob/main/README.md)
+          - [Deployment Guide](https://github.com/KnutGrymn/paperless-ngx-cluster/blob/main/DEPLOYMENT-GUIDE.md)
+          - [Quick Reference](https://github.com/KnutGrymn/paperless-ngx-cluster/blob/main/QUICK-REFERENCE.md)
+          
+          ## 🐛 Known Issues
+          
+          Please check the [Issues](https://github.com/KnutGrymn/paperless-ngx-cluster/issues) page for known issues.
+          
+          ## 💬 Support
+          
+          - **Issues**: [GitHub Issues](https://github.com/KnutGrymn/paperless-ngx-cluster/issues)
+          - **Discussions**: [GitHub Discussions](https://github.com/KnutGrymn/paperless-ngx-cluster/discussions)
+          
+          ---
+          
+          **Full Changelog**: https://github.com/KnutGrymn/paperless-ngx-cluster/compare/...${VERSION}
+          EOF
+          
+          echo "✅ Generated release notes"
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          body_path: release-notes.md
+          draft: false
+          prerelease: false
+          files: |
+            paperless-ngx-cluster-${{ steps.version.outputs.version }}.tar.gz
+            paperless-ngx-cluster-${{ steps.version.outputs.version }}.tar.gz.sha256
+            paperless-ngx-cluster-${{ steps.version.outputs.version }}.tar.gz.md5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Summary
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "## 🎉 Release Created Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "**Archive:** paperless-ngx-cluster-${VERSION}.tar.gz" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Download Links" >> $GITHUB_STEP_SUMMARY
+          echo "- [Release Page](https://github.com/KnutGrymn/paperless-ngx-cluster/releases/tag/${VERSION})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Archive Download](https://github.com/KnutGrymn/paperless-ngx-cluster/releases/download/${VERSION}/paperless-ngx-cluster-${VERSION}.tar.gz)" >> $GITHUB_STEP_SUMMARY

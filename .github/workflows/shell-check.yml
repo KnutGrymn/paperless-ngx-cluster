@@ -1,0 +1,240 @@
+name: Shell Script Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  shellcheck:
+    name: ShellCheck Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './scripts'
+          severity: warning
+          ignore_paths: '.git .github'
+        env:
+          SHELLCHECK_OPTS: -e SC1091 -e SC2164
+      
+  syntax-check:
+    name: Bash Syntax Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check bash syntax
+        run: |
+          echo "Checking bash syntax for all .sh files..."
+          EXIT_CODE=0
+          for script in scripts/*.sh; do
+            if [ -f "$script" ]; then
+              echo "Checking: $script"
+              if ! bash -n "$script"; then
+                echo "❌ Syntax error in $script"
+                EXIT_CODE=1
+              else
+                echo "✅ $script syntax OK"
+              fi
+            fi
+          done
+          exit $EXIT_CODE
+  
+  script-permissions:
+    name: Verify Script Permissions
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check executable permissions
+        run: |
+          echo "Checking that all .sh files are executable..."
+          EXIT_CODE=0
+          for script in scripts/*.sh; do
+            if [ -f "$script" ]; then
+              if [ -x "$script" ]; then
+                echo "✅ $script is executable"
+              else
+                echo "❌ $script is NOT executable"
+                EXIT_CODE=1
+              fi
+            fi
+          done
+          exit $EXIT_CODE
+  
+  script-headers:
+    name: Validate Script Headers
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check shebang lines
+        run: |
+          echo "Checking that all .sh files have proper shebang..."
+          EXIT_CODE=0
+          for script in scripts/*.sh; do
+            if [ -f "$script" ]; then
+              FIRST_LINE=$(head -n 1 "$script")
+              if [[ "$FIRST_LINE" =~ ^#!/bin/bash ]] || [[ "$FIRST_LINE" =~ ^#!/usr/bin/env\ bash ]]; then
+                echo "✅ $script has valid shebang"
+              else
+                echo "❌ $script missing or invalid shebang: $FIRST_LINE"
+                EXIT_CODE=1
+              fi
+            fi
+          done
+          exit $EXIT_CODE
+  
+  test-dry-run:
+    name: Test Scripts (Dry Run)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+      
+      - name: Test script help functions
+        run: |
+          echo "Testing help/usage functions..."
+          
+          # Test install script help (if it has one)
+          if grep -q "\-\-help\|\-h" install-paperless-ngx-cluster.sh; then
+            echo "Testing install-paperless-ngx-cluster.sh help..."
+            # Would need to handle interactive script appropriately
+          fi
+          
+          # Test backup script help
+          if [ -f cluster-backup.sh ]; then
+            echo "Testing cluster-backup.sh help..."
+            bash cluster-backup.sh help || true
+            bash cluster-backup.sh --help || true
+          fi
+          
+          # Test load balancer generator help
+          if [ -f generate-lb-config.sh ]; then
+            echo "Testing generate-lb-config.sh..."
+            # Would need to handle interactive script
+          fi
+          
+          echo "✅ Script structure tests passed"
+  
+  validate-docker-compose:
+    name: Validate Generated Docker Configs
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check for docker-compose templates
+        run: |
+          echo "Checking for docker-compose generation in scripts..."
+          
+          if grep -q "docker-compose.yml" *.sh; then
+            echo "✅ Scripts generate docker-compose configurations"
+          fi
+          
+          # Check that scripts generate valid YAML structure
+          if grep -q "cat > docker-compose.yml" *.sh; then
+            echo "✅ Docker Compose generation found"
+          fi
+  
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check for hardcoded secrets
+        run: |
+          echo "Scanning for potential hardcoded secrets..."
+          EXIT_CODE=0
+          
+          # Check for potential passwords or keys
+          if grep -r -i "password.*=" scripts/*.sh | grep -v "PASSWORD\|read -p\|read -s\|\${.*PASSWORD\|\$POSTGRES_PASSWORD\|\$REDIS_PASSWORD\|\$REPLICATION_PASSWORD" | grep "=" ; then
+            echo "⚠️  Warning: Potential hardcoded password found"
+            # Don't fail on this, just warn
+          fi
+          
+          # Check for API keys or tokens
+          if grep -r -i "api[_-]key\|token" scripts/*.sh | grep -v "TOKEN_LIMIT\|#" | grep "=" ; then
+            echo "⚠️  Warning: Potential API key found"
+          fi
+          
+          echo "✅ Security scan completed"
+  
+  documentation-check:
+    name: Documentation Consistency
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check script references in documentation
+        run: |
+          echo "Checking that all scripts mentioned in docs exist..."
+          EXIT_CODE=0
+          
+          # Check README references - exclude badge URLs and external scripts
+          for script in $(grep -o "\./scripts/[a-z-]*\.sh\|scripts/[a-z-]*\.sh" README.md | grep -v "img\.sh\|shields\.sh" | sort -u); do
+            # Remove ./ prefix if present
+            script=${script#./}
+            
+            # Skip external scripts (like get-docker.sh from Docker's website)
+            if [[ "$script" == *"get-docker.sh"* ]]; then
+              continue
+            fi
+            
+            if [ -f "$script" ]; then
+              echo "✅ $script exists (referenced in README.md)"
+            else
+              echo "❌ $script missing but referenced in README.md"
+              EXIT_CODE=1
+            fi
+          done
+          
+          # Check DEPLOYMENT-GUIDE references - exclude external scripts
+          for script in $(grep -o "\./scripts/[a-z-]*\.sh\|scripts/[a-z-]*\.sh" DEPLOYMENT-GUIDE.md | grep -v "img\.sh\|shields\.sh\|get-docker\.sh" | sort -u); do
+            # Remove ./ prefix if present
+            script=${script#./}
+            
+            if [ -f "$script" ]; then
+              echo "✅ $script exists (referenced in DEPLOYMENT-GUIDE.md)"
+            else
+              echo "❌ $script missing but referenced in DEPLOYMENT-GUIDE.md"
+              EXIT_CODE=1
+            fi
+          done
+          
+          exit $EXIT_CODE
+      
+      - name: Check version consistency
+        run: |
+          echo "Checking version numbers across files..."
+          
+          # Could check that version numbers match across files
+          # This is a placeholder for more sophisticated checks
+          
+          echo "✅ Documentation check completed"

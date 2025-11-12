@@ -1,0 +1,106 @@
+# Paperless-ngx Cluster .gitignore
+
+# Scripts folder contains all executable scripts
+# scripts/*.sh are tracked
+
+# Generated files
+*.tar.gz
+*.zip
+*.7z
+
+# Backup files
+*.bak
+*.backup
+*~
+.DS_Store
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+.vim/
+*.sublime-*
+
+# Test and temporary files
+test-env/
+tmp/
+temp/
+*.tmp
+
+# Generated configurations (from scripts)
+docker-compose.yml
+.env
+postgresql-primary.conf
+pg_hba.conf
+redis.conf
+sentinel.conf
+
+# Backup directories
+backups/
+*.sql
+*.sql.gz
+*.rdb
+*.rdb.gz
+
+# Logs
+*.log
+logs/
+
+# Operating System Files
+Thumbs.db
+.DS_Store
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Node modules (if any documentation tools)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Python (if any Python tools)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Local development
+.env.local
+.env.*.local
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Secrets and sensitive data
+secrets/
+*.key
+*.pem
+*.crt
+*.p12
+*.jks
+
+# Documentation build artifacts
+docs/_build/
+site/
+
+# Certificates
+*.csr
+*.der
+*.key
+*.pem
+*.p7b
+*.p7c
+*.p12
+*.pfx
+*.cert
+
+# Private or custom configurations
+local-config/
+custom/
+private/

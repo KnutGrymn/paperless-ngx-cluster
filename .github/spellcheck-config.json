@@ -1,0 +1,44 @@
+{
+  "matrix": [
+    {
+      "name": "Markdown",
+      "expect_match": false,
+      "apsell": {
+        "lang": "en",
+        "d": "en_US"
+      },
+      "dictionary": {
+        "wordlists": [".github/wordlist.txt"],
+        "encoding": "utf-8"
+      },
+      "pipeline": [
+        {
+          "pyspelling.filters.markdown": {
+            "markdown_extensions": [
+              "markdown.extensions.extra"
+            ]
+          }
+        },
+        {
+          "pyspelling.filters.html": {
+            "comments": false,
+            "ignores": [
+              "code",
+              "pre"
+            ]
+          }
+        },
+        {
+          "pyspelling.filters.url": {}
+        }
+      ],
+      "sources": [
+        {
+          "name": "markdown",
+          "pattern": "*.md",
+          "default_encoding": "utf-8"
+        }
+      ]
+    }
+  ]
+}

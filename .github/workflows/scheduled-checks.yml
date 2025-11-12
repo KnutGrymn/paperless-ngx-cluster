@@ -1,0 +1,232 @@
+name: Scheduled Checks
+
+on:
+  schedule:
+    # Run every Monday at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  check-external-links:
+    name: Check External Documentation Links
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check Paperless-ngx documentation links
+        run: |
+          echo "Checking if external documentation is still accessible..."
+          
+          # Check main paperless-ngx documentation
+          if curl -f -s -o /dev/null "https://docs.paperless-ngx.com/"; then
+            echo "✅ Paperless-ngx documentation is accessible"
+          else
+            echo "❌ Paperless-ngx documentation is NOT accessible"
+          fi
+          
+          # Check GitHub repository
+          if curl -f -s -o /dev/null "https://github.com/paperless-ngx/paperless-ngx"; then
+            echo "✅ Paperless-ngx GitHub repository is accessible"
+          else
+            echo "❌ Paperless-ngx GitHub repository is NOT accessible"
+          fi
+          
+          # Check Docker documentation
+          if curl -f -s -o /dev/null "https://docs.docker.com/"; then
+            echo "✅ Docker documentation is accessible"
+          else
+            echo "❌ Docker documentation is NOT accessible"
+          fi
+  
+  check-docker-images:
+    name: Check Docker Image Availability
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check Paperless-ngx Docker image
+        run: |
+          echo "Checking if referenced Docker images are available..."
+          
+          # Check Paperless-ngx image
+          if docker pull ghcr.io/paperless-ngx/paperless-ngx:latest; then
+            echo "✅ Paperless-ngx Docker image is available"
+            docker images ghcr.io/paperless-ngx/paperless-ngx:latest
+          else
+            echo "❌ Failed to pull Paperless-ngx Docker image"
+          fi
+      
+      - name: Check PostgreSQL image
+        run: |
+          if docker pull postgres:16; then
+            echo "✅ PostgreSQL 16 image is available"
+          else
+            echo "❌ Failed to pull PostgreSQL 16 image"
+          fi
+      
+      - name: Check Redis image
+        run: |
+          if docker pull redis:7-alpine; then
+            echo "✅ Redis 7 Alpine image is available"
+          else
+            echo "❌ Failed to pull Redis 7 Alpine image"
+          fi
+  
+  check-script-downloads:
+    name: Check Script Download URLs
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Test raw GitHub URLs
+        run: |
+          echo "Testing that scripts can be downloaded from GitHub..."
+          
+          BASE_URL="https://raw.githubusercontent.com/KnutGrymn/paperless-ngx-cluster/main"
+          
+          SCRIPTS=(
+            "scripts/install-paperless-ngx-cluster.sh"
+            "scripts/cluster-backup.sh"
+            "scripts/cluster-health-check.sh"
+            "scripts/generate-lb-config.sh"
+          )
+          
+          for script in "${SCRIPTS[@]}"; do
+            URL="$BASE_URL/$script"
+            echo "Testing: $URL"
+            
+            if curl -f -s -o /dev/null "$URL"; then
+              echo "✅ $script is downloadable"
+            else
+              echo "❌ $script is NOT downloadable from $URL"
+            fi
+          done
+  
+  check-dependencies:
+    name: Check System Dependencies
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Extract required packages from documentation
+        run: |
+          echo "Checking availability of required system packages..."
+          
+          # Check Docker availability
+          if command -v docker &> /dev/null; then
+            echo "✅ Docker: $(docker --version)"
+          else
+            echo "❌ Docker is not installed"
+          fi
+          
+          # Check Docker Compose
+          if command -v docker-compose &> /dev/null || docker compose version &> /dev/null; then
+            echo "✅ Docker Compose is available"
+          else
+            echo "❌ Docker Compose is not available"
+          fi
+          
+          # Check common utilities
+          UTILS="curl wget tar gzip jq"
+          for util in $UTILS; do
+            if command -v $util &> /dev/null; then
+              echo "✅ $util is available"
+            else
+              echo "⚠️  $util is not available"
+            fi
+          done
+  
+  security-advisories:
+    name: Check Security Advisories
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check for known vulnerabilities in referenced images
+        run: |
+          echo "Checking for security advisories..."
+          
+          # This is a placeholder - you could integrate with tools like:
+          # - Trivy
+          # - Snyk
+          # - GitHub Security Advisories
+          
+          echo "⚠️  Manual security review recommended"
+          echo "Check: https://github.com/advisories"
+  
+  compatibility-check:
+    name: Ubuntu Compatibility Check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ubuntu-version: ['20.04', '22.04', '24.04']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Ubuntu ${{ matrix.ubuntu-version }} container
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ubuntu:${{ matrix.ubuntu-version }}
+          options: -v ${{ github.workspace }}:/workspace
+          run: |
+            cd /workspace
+            
+            echo "Testing on Ubuntu ${{ matrix.ubuntu-version }}"
+            
+            # Update package lists
+            apt-get update
+            
+            # Check if Docker can be installed
+            apt-cache policy docker.io || echo "Docker.io package not found"
+            
+            # Check for other dependencies
+            apt-cache policy curl wget tar gzip
+            
+            echo "✅ Compatibility check completed for Ubuntu ${{ matrix.ubuntu-version }}"
+  
+  documentation-freshness:
+    name: Check Documentation Freshness
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check last modification dates
+        run: |
+          echo "Checking documentation last update dates..."
+          
+          for doc in README.md DEPLOYMENT-GUIDE.md QUICK-REFERENCE.md; do
+            if [ -f "$doc" ]; then
+              LAST_MODIFIED=$(stat -c %y "$doc")
+              echo "$doc: Last modified $LAST_MODIFIED"
+            fi
+          done
+      
+      - name: Check for outdated references
+        run: |
+          echo "Checking for potentially outdated version references..."
+          
+          # Check for old Ubuntu versions
+          if grep -r "Ubuntu 18.04\|Ubuntu 16.04" *.md; then
+            echo "⚠️  Found references to old Ubuntu versions"
+          fi
+          
+          # Check for old Docker versions
+          if grep -r "Docker 19\|Docker 18" *.md; then
+            echo "⚠️  Found references to old Docker versions"
+          fi
+          
+          echo "✅ Documentation freshness check completed"
