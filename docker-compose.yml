@@ -1,0 +1,160 @@
+# MIT License
+# Copyright (c) 2024
+#
+# Paperless-ngx Multi-Node Cluster Docker Compose Configuration
+# This file is automatically configured by the installation script
+# Manual modifications should be done carefully to maintain cluster compatibility
+
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: paperless-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    networks:
+      - paperless-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  webserver:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    container_name: paperless-webserver
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      # GlusterFS distributed storage mounts
+      - /mnt/glusterfs/data:/usr/src/paperless/data
+      - /mnt/glusterfs/media:/usr/src/paperless/media
+      - /mnt/glusterfs/export:/usr/src/paperless/export
+      - /mnt/glusterfs/consume:/usr/src/paperless/consume
+      # Optional: Custom scripts
+      # - ./scripts:/usr/src/paperless/scripts
+    environment:
+      # Redis configuration
+      PAPERLESS_REDIS: redis://redis:6379
+      
+      # Database configuration - uses local PostgreSQL with pgactive
+      PAPERLESS_DBENGINE: postgres
+      PAPERLESS_DBHOST: ${NODE_IP:-localhost}
+      PAPERLESS_DBPORT: 5432
+      PAPERLESS_DBNAME: paperless
+      PAPERLESS_DBUSER: paperless
+      PAPERLESS_DBPASS: ${DB_PASSWORD}
+      
+      # Security configuration
+      PAPERLESS_SECRET_KEY: ${PAPERLESS_SECRET_KEY}
+      PAPERLESS_URL: ${PAPERLESS_URL}
+      PAPERLESS_ALLOWED_HOSTS: "*"
+      PAPERLESS_CORS_ALLOWED_HOSTS: ${PAPERLESS_URL}
+      PAPERLESS_TRUSTED_PROXIES: "127.0.0.1"
+      
+      # OCR configuration
+      PAPERLESS_OCR_LANGUAGE: eng+deu+fra+spa
+      PAPERLESS_OCR_MODE: skip
+      PAPERLESS_OCR_CLEAN: clean
+      PAPERLESS_OCR_DESKEW: true
+      PAPERLESS_OCR_ROTATE_PAGES: true
+      PAPERLESS_OCR_ROTATE_PAGES_THRESHOLD: 12
+      
+      # Performance configuration
+      PAPERLESS_TASK_WORKERS: 2
+      PAPERLESS_THREADS_PER_WORKER: 2
+      PAPERLESS_TIME_ZONE: Europe/Berlin
+      PAPERLESS_CONSUMER_POLLING: 60
+      PAPERLESS_CONSUMER_DELETE_DUPLICATES: true
+      PAPERLESS_CONSUMER_RECURSIVE: true
+      PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS: true
+      
+      # Optimization for cluster environment
+      PAPERLESS_OPTIMIZE_THUMBNAILS: true
+      PAPERLESS_ENABLE_FLOWER: ${ENABLE_FLOWER:-false}
+      
+      # File handling
+      PAPERLESS_FILENAME_FORMAT: "{created_year}/{correspondent}/{created_month}-{created_day}-{title}"
+      PAPERLESS_FILENAME_DATE_ORDER: YMD
+      PAPERLESS_DATE_ORDER: DMY
+      
+      # Logging
+      PAPERLESS_LOGROTATE_MAX_SIZE: 10MB
+      PAPERLESS_LOGROTATE_MAX_BACKUPS: 5
+      
+      # Optional features
+      PAPERLESS_ENABLE_HTTP_REMOTE_USER: false
+      PAPERLESS_SOCIALACCOUNT_ALLOW_SIGNUPS: false
+      
+    networks:
+      - paperless-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Resource limits (adjust based on your hardware)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+
+  # Optional: Gotenberg for Office document conversion
+  gotenberg:
+    image: gotenberg/gotenberg:7
+    container_name: paperless-gotenberg
+    restart: unless-stopped
+    networks:
+      - paperless-net
+    command:
+      - "gotenberg"
+      - "--chromium-disable-javascript=true"
+      - "--chromium-allow-list=file:///tmp/.*"
+      - "--api-timeout=60s"
+      - "--log-level=info"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  # Optional: Tika for advanced document parsing
+  tika:
+    image: apache/tika:latest
+    container_name: paperless-tika
+    restart: unless-stopped
+    networks:
+      - paperless-net
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  paperless-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

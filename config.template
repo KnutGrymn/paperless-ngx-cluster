@@ -1,0 +1,59 @@
+# Paperless-ngx Cluster Configuration Template
+# 
+# MIT License
+# Copyright (c) 2024
+#
+# This file contains all configuration variables for the Paperless-ngx cluster
+# Copy this file to /etc/paperless-cluster.conf and fill in your values
+
+# Node Configuration
+NODE_NAME=node1                          # Unique name for this node
+NODE_IP=192.168.1.10                    # IP address of this node
+IS_FIRST_NODE=yes                       # Is this the first node? (yes/no)
+FIRST_NODE_IP=192.168.1.10             # IP of the first node
+FIRST_NODE_HOSTNAME=node1               # Hostname of the first node
+TOTAL_NODES=3                            # Total number of nodes in cluster
+
+# PostgreSQL Configuration
+PG_VERSION=17                            # PostgreSQL version
+REPLICATION_PASSWORD=changeme            # Password for replication user
+DB_PASSWORD=changeme                     # Password for paperless database user
+
+# GlusterFS Configuration  
+GLUSTER_VOLUME=paperless-volume         # Name of the GlusterFS volume
+GLUSTER_REPLICA_COUNT=3                  # Number of replicas
+
+# Paperless-ngx Configuration
+PAPERLESS_SECRET_KEY=                   # Leave empty to generate random key
+PAPERLESS_URL=https://paperless.example.com  # Public URL for Paperless-ngx
+PAPERLESS_ADMIN_USER=admin              # Admin username
+PAPERLESS_ADMIN_PASSWORD=changeme       # Admin password
+PAPERLESS_ADMIN_EMAIL=admin@example.com # Admin email
+
+# Backup Configuration
+BACKUP_DIR=/backup/paperless-cluster    # Directory for backups
+RETENTION_DAYS=30                        # Days to retain backups
+REMOTE_BACKUP_LOCATION=                 # Optional: S3 or rsync location
+NOTIFICATION_EMAIL=                      # Optional: Email for notifications
+
+# Monitoring Configuration
+ALERT_THRESHOLD_REPLICATION_LAG=60      # Replication lag threshold (seconds)
+ALERT_THRESHOLD_DISK_USAGE=80           # Disk usage alert threshold (%)
+ALERT_THRESHOLD_MEMORY_USAGE=85         # Memory usage alert threshold (%)
+ALERT_THRESHOLD_CPU_USAGE=80            # CPU usage alert threshold (%)
+
+# Network Configuration
+CLUSTER_NETWORK=192.168.1.0/24          # Network range for cluster nodes
+FIREWALL_ENABLED=yes                    # Enable firewall rules (yes/no)
+
+# Performance Tuning
+PG_SHARED_BUFFERS=256MB                  # PostgreSQL shared buffers
+PG_EFFECTIVE_CACHE_SIZE=1GB             # PostgreSQL effective cache size
+GLUSTER_CACHE_SIZE=256MB                # GlusterFS cache size
+DOCKER_MEMORY_LIMIT=2G                   # Docker container memory limit
+
+# Advanced Options
+ENABLE_FLOWER=false                      # Enable Celery Flower monitoring
+ENABLE_PROMETHEUS_METRICS=false          # Enable Prometheus metrics export
+ENABLE_DEBUG_LOGGING=false               # Enable debug logging
+SSL_ENABLED=false                        # Enable SSL for PostgreSQL replication
